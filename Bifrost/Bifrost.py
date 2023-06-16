@@ -13,20 +13,37 @@ class Bifrost :
 
     def run_main(self) :
         self.daily_poll()
+        self.this_or_that()
         self.clickables()
         self.turbocharge()
         self.test_your_smarts()
 
     def open_rewards_tab(self):
-        if self.pud_driver.find_element((By.ID, 'panelFlyout')) == None :
-            if not self.pud_driver.is_element_visible((By.ID, "id_rh"), timeout=5) :
-                self.pud_driver.get("https://www.bing.com/")
-                self.pud_driver.sleep_range(10, 14)
-            self.pud_driver.sleep_range(8, 10)
-            if not self.pud_driver.click_element((By.ID, "id_rh"), timeout=20) :
-                print("selenium fail using java script")
-                self.pud_driver.execute_java_script("document.getElementById('id_rh').click();")
-            self.pud_driver.sleep_range(8, 10)
+        def wait_for_tab(retries:int=5, cycle_time:int=5) :
+            for _ in range(retries) :
+                if self.pud_driver.find_element((By.ID, 'panelFlyout')) == None :
+                    self.pud_driver.sleep(cycle_time)
+                else :
+                    self.pud_driver.sleep_range(4, 6)
+                    return True
+            return False
+        # This may be a bit overkill
+        while True :
+            if self.pud_driver.find_element((By.ID, 'panelFlyout')) == None :
+                if not self.pud_driver.is_element_visible((By.ID, "id_rh"), timeout=5) :
+                    self.pud_driver.get("https://www.bing.com/")
+                    self.pud_driver.sleep_range(10, 14)
+                self.pud_driver.sleep_range(8, 10)
+                if not self.pud_driver.click_element((By.ID, "id_rh"), timeout=20) :
+                    print("selenium fail using java script")
+                    self.pud_driver.execute_java_script("document.getElementById('id_rh').click();")
+
+                if wait_for_tab(retries=10, cycle_time=2) :
+                    continue
+            else :
+                self.pud_driver.sleep_range(4, 6)
+                return
+                
 
     def daily_poll(self) :
         pud_driver = self.pud_driver
@@ -84,6 +101,7 @@ class Bifrost :
                 answer = pud_driver.execute_java_script(self.scripts.turbo_correct_id)
                 pud_driver.click_element((By.ID, str(answer)))
                 pud_driver.sleep_range(10,15)
+            pud_driver.click_element((By.ID, "rqCloseBtn"), 10)
 
         pud_driver.sleep_range(2, 3)
         
@@ -95,19 +113,37 @@ class Bifrost :
         while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(test_your_smarts_reskins))) == True :
             pud_driver.sleep_range(8, 13)
             current_question = 0
-            while True :
+            for _ in range(20) :
                 pud_driver.sleep_range(6,8)
-                if pud_driver.is_element_visible((By.ID, "ListOfSummaryPanes"), 2) :
-                    break
                 answer_id = str(pud_driver.execute_java_script(self.scripts.test_your_smarts_correct_id))
                 pud_driver.click_element((By.ID, answer_id))
                 pud_driver.sleep_range(5,7)
-                pud_driver.click_element((By.ID, f"nextQuestionbtn{current_question}"))
-                current_question += 1
-            pud_driver.sleep_range(8,10)
+                if pud_driver.get_attribute((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"), 'value') == 'Get your score' :
+                    pud_driver.sleep_range(1,2)
+                    print(pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']")))
+                    break
+                else :
+                    pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"))
+                    current_question += 1
+
+            pud_driver.sleep_range(10,15)
             self.open_rewards_tab()
 
         pud_driver.sleep_range(2, 3)
+
+    def this_or_that(self) :
+        pud_driver = self.pud_driver
+        self.open_rewards_tab()
+        pud_driver.sleep_range(6, 8)
+        if bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["This or That?"]))) == True :
+            pud_driver.sleep_range(15, 20)
+            pud_driver.click_element((By.ID, "rqStartQuiz"))
+            pud_driver.sleep_range(9,17)
+            for _ in range(10) :
+                answer = pud_driver.execute_java_script(self.scripts.this_or_that_id())
+                pud_driver.click_element((By.ID, answer), timeout=25)
+                pud_driver.sleep_range(9,17)
+
                     
                         
 
@@ -119,11 +155,11 @@ class bifrost_scripts :
 
         // Iterate through the elements
         for (let i = 0; i < elements.length; i++) {
-        // Get the element's text content
-        var text = elements[i].textContent;
+            // Get the element's text content
+            var text = elements[i].textContent;
 
-        // Add the element to the dictionary with the key being its text content
-        elementDict[text] = elements[i];
+            // Add the element to the dictionary with the key being its text content
+            elementDict[text] = elements[i];
         }
 
         return elementDict;
@@ -156,6 +192,28 @@ class bifrost_scripts :
         var value = _w.rewardsQuizRenderInfo.correctAnswer;
         var element = document.querySelector(`[value="${value}"]`);
         return element.id;
+        '''
+    def this_or_that_id(self) :
+        return '''
+        function getAnswerCode(key, string) {
+            let t = 0;
+            for (let i = 0; i < string.length; i++) {
+                t += string.charCodeAt(i);
+            }
+            t += parseInt(key.slice(-2), 16);
+            return t.toString();
+        };
+
+        var answerEncodeKey = _G.IG;
+        var answerOne = document.querySelector('#rqAnswerOption0');
+        var answerTwo = document.querySelector('#rqAnswerOption1');
+        var correctAnswerCode = _w.rewardsQuizRenderInfo.correctAnswer;
+        if (getAnswerCode(answerEncodeKey, answerOne.getAttribute('data-option')) == correctAnswerCode) {
+            return answerOne.id;
+        }
+        if (getAnswerCode(answerEncodeKey, answerTwo.getAttribute('data-option')) == correctAnswerCode) {
+            return answerTwo.id;
+        }
         '''
 
     def click_not_checked_elements(self, text_list) :
