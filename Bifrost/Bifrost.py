@@ -232,7 +232,7 @@ class bifrost_scripts :
             for (var element of elements) {
                 for (var text of textList) {
                     // Check if the element contains the specific text and is not checked
-                    if (element.textContent.includes(text) && !element.parentElement.parentElement.querySelector('.checkMark')) {
+                    if (element.textContent.includes(text) && element.parentElement.parentElement.querySelector('.point_cont') && !element.parentElement.parentElement.querySelector('.checkMark')) {
 
                         // Scroll the element into view
                         element.scrollIntoView();
