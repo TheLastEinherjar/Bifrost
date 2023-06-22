@@ -64,13 +64,16 @@ class Bifrost :
         pud_driver = self.pud_driver
         self.open_rewards_tab()
         pud_driver.sleep_range(6, 8)
-        while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(all_clickables))) == True :
-            pud_driver.sleep_range(15, 20)
-            pud_driver.close_other_tabs(0)
-            pud_driver.sleep_range(4, 6)
-            self.open_rewards_tab()
+        all_clickables = pud_driver.execute_java_script(self.scripts.get_clickables())
+        if all_clickables :
+            while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(all_clickables))) == True :
+                pud_driver.sleep_range(15, 20)
+                pud_driver.close_other_tabs(0)
+                pud_driver.sleep_range(4, 6)
+                self.open_rewards_tab()
 
-        pud_driver.sleep_range(2, 3)
+            pud_driver.sleep_range(2, 3)
+        
 
     def supersonic(self) :
         pud_driver = self.pud_driver
@@ -78,10 +81,11 @@ class Bifrost :
         pud_driver.sleep_range(6, 8)
         if bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["Supersonic quiz"]))) == True :
             pud_driver.sleep_range(15, 20)
+            pud_driver.is_element_clickable((By.ID, "rqStartQuiz"), timeout=20)
             pud_driver.click_element((By.ID, "rqStartQuiz"))
             pud_driver.sleep_range(5,10)
             for _ in range(3) :
-                answers = pud_driver.execute_java_script(self.scripts.supersonic_answers)
+                answers = pud_driver.execute_java_script(self.scripts.supersonic_answers())
                 for answer in answers :
                     pud_driver.click_element((By.ID, str(answer)))
                     pud_driver.sleep_range(6,8)
@@ -98,7 +102,7 @@ class Bifrost :
             pud_driver.click_element((By.ID, "rqStartQuiz"))
             pud_driver.sleep_range(5,10)
             for _ in range(3) :
-                answer = pud_driver.execute_java_script(self.scripts.turbo_correct_id)
+                answer = pud_driver.execute_java_script(self.scripts.turbo_correct_id())
                 pud_driver.click_element((By.ID, str(answer)))
                 pud_driver.sleep_range(10,15)
             pud_driver.click_element((By.ID, "rqCloseBtn"), 10)
@@ -115,12 +119,12 @@ class Bifrost :
             current_question = 0
             for _ in range(20) :
                 pud_driver.sleep_range(6,8)
-                answer_id = str(pud_driver.execute_java_script(self.scripts.test_your_smarts_correct_id))
+                answer_id = str(pud_driver.execute_java_script(self.scripts.test_your_smarts_correct_id()))
                 pud_driver.click_element((By.ID, answer_id))
                 pud_driver.sleep_range(5,7)
                 if pud_driver.get_attribute((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"), 'value') == 'Get your score' :
                     pud_driver.sleep_range(1,2)
-                    print(pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']")))
+                    pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"))
                     break
                 else :
                     pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"))
@@ -148,23 +152,8 @@ class Bifrost :
                         
 
 class bifrost_scripts :
-    def __init__(self) -> None:
-        self.get_rewards_dict = '''
-        // Initialize an empty dictionary
-        var elementDict = {};
-
-        // Iterate through the elements
-        for (let i = 0; i < elements.length; i++) {
-            // Get the element's text content
-            var text = elements[i].textContent;
-
-            // Add the element to the dictionary with the key being its text content
-            elementDict[text] = elements[i];
-        }
-
-        return elementDict;
-        '''
-        self.supersonic_answers = '''
+    def supersonic_answers(self) :
+        return '''
         // Select all elements with id starting with 'rqAnswerOption'
         var answerOptions = document.querySelectorAll('[id^="rqAnswerOption"]');
 
@@ -176,7 +165,8 @@ class bifrost_scripts :
             })
             .map(option => option.id);
         '''
-        self.test_your_smarts_correct_id = '''
+    def test_your_smarts_correct_id(self) :
+        return '''
         // Find all elements with the class 'wk_hideCompulsary'
         var correctOptions = document.getElementsByClassName('wk_hideCompulsary');
 
@@ -188,7 +178,8 @@ class bifrost_scripts :
         // Return the parent element's ID
         return parentElement.id;
         '''
-        self.turbo_correct_id = '''
+    def turbo_correct_id(self) :
+        return '''
         var value = _w.rewardsQuizRenderInfo.correctAnswer;
         var element = document.querySelector(`[value="${value}"]`);
         return element.id;
@@ -214,6 +205,29 @@ class bifrost_scripts :
         if (getAnswerCode(answerEncodeKey, answerTwo.getAttribute('data-option')) == correctAnswerCode) {
             return answerTwo.id;
         }
+        '''
+    
+    def get_clickables(self) :
+        return '''
+        // Identify the iframe you want to switch to
+        var iframe = document.getElementById('panelFlyout');
+
+        // Switch to the iframe's content
+        var iframeContent = iframe.contentWindow.document || iframe.contentDocument;
+		var htmlContent = iframeContent.documentElement.innerHTML;
+        var groups = htmlContent.match(/flyoutViewModel = (\{[\s\S]*?\});/);
+        if (groups) {
+        	var contentBetweenGroups = groups[1];
+        	var promotions = JSON.parse(contentBetweenGroups)['userInfo']['promotions'];
+       
+            var titles = []
+            for (let promo of promotions) {
+                if (promo['attributes']['type'] === 'urlreward' && promo['attributes']['max'] != '0' && promo['priority'] != 0) {
+                    titles.push(promo['attributes']['title']);
+                };
+            };
+            return titles;
+        };
         '''
 
     def click_not_checked_elements(self, text_list) :
