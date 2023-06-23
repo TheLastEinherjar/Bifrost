@@ -12,11 +12,9 @@ class Bifrost :
         self.scripts = bifrost_scripts()
 
     def run_main(self) :
-        self.daily_poll()
-        self.this_or_that()
-        self.clickables()
-        self.turbocharge()
-        self.test_your_smarts()
+        tasks = [self.daily_poll, self.this_or_that, self.clickables, self.turbocharge, self.test_your_smarts]
+        for task in random.choices(tasks, k=len(tasks)) :
+            task()
 
     def open_rewards_tab(self):
         def wait_for_tab(retries:int=5, cycle_time:int=5) :
@@ -28,9 +26,10 @@ class Bifrost :
                     return True
             return False
         # This may be a bit overkill
+        loop_count = 0
         while True :
             if self.pud_driver.find_element((By.ID, 'panelFlyout')) == None :
-                if not self.pud_driver.is_element_visible((By.ID, "id_rh"), timeout=5) :
+                if (not self.pud_driver.is_element_visible((By.ID, "id_rh"), timeout=5)) or loop_count > 1 :
                     self.pud_driver.get("https://www.bing.com/")
                     self.pud_driver.sleep_range(10, 14)
                 self.pud_driver.sleep_range(8, 10)
@@ -38,10 +37,11 @@ class Bifrost :
                     print("selenium fail using java script")
                     self.pud_driver.execute_java_script("document.getElementById('id_rh').click();")
 
+                loop_count += 1
                 if wait_for_tab(retries=10, cycle_time=2) :
-                    continue
+                    self.pud_driver.sleep_range(14, 17)
             else :
-                self.pud_driver.sleep_range(4, 6)
+                self.pud_driver.sleep_range(3, 7)
                 return
                 
 
@@ -63,7 +63,6 @@ class Bifrost :
         all_clickables = bifrost_data_loader.load_txt_lines(f'{self.path}/clickables.txt')
         pud_driver = self.pud_driver
         self.open_rewards_tab()
-        pud_driver.sleep_range(6, 8)
         all_clickables = pud_driver.execute_java_script(self.scripts.get_clickables())
         if all_clickables :
             while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(all_clickables))) == True :
@@ -78,8 +77,7 @@ class Bifrost :
     def supersonic(self) :
         pud_driver = self.pud_driver
         self.open_rewards_tab()
-        pud_driver.sleep_range(6, 8)
-        if bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["Supersonic quiz"]))) == True :
+        while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["Supersonic quiz"]))) == True :
             pud_driver.sleep_range(15, 20)
             pud_driver.is_element_clickable((By.ID, "rqStartQuiz"), timeout=20)
             pud_driver.click_element((By.ID, "rqStartQuiz"))
@@ -90,14 +88,13 @@ class Bifrost :
                     pud_driver.click_element((By.ID, str(answer)))
                     pud_driver.sleep_range(6,8)
                 pud_driver.sleep_range(6,9)
-
             pud_driver.sleep_range(2, 3)
+            self.open_rewards_tab()
 
     def turbocharge(self) :
         pud_driver = self.pud_driver
         self.open_rewards_tab()
-        pud_driver.sleep_range(6, 8)
-        if bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["Turbocharge quiz"]))) == True :
+        while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["Turbocharge quiz"]))) == True :
             pud_driver.sleep_range(15, 20)
             pud_driver.click_element((By.ID, "rqStartQuiz"))
             pud_driver.sleep_range(5,10)
@@ -106,29 +103,26 @@ class Bifrost :
                 pud_driver.click_element((By.ID, str(answer)))
                 pud_driver.sleep_range(10,15)
             pud_driver.click_element((By.ID, "rqCloseBtn"), 10)
-
-        pud_driver.sleep_range(2, 3)
+            pud_driver.sleep_range(2, 3)
+            self.open_rewards_tab()
         
     def test_your_smarts(self) :
         test_your_smarts_reskins = bifrost_data_loader.load_txt_lines(f'{self.path}/test_your_smarts_reskins.txt')
         pud_driver = self.pud_driver
         self.open_rewards_tab()
-        pud_driver.sleep_range(6, 8)
         while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(test_your_smarts_reskins))) == True :
             pud_driver.sleep_range(8, 13)
-            current_question = 0
             for _ in range(20) :
                 pud_driver.sleep_range(6,8)
                 answer_id = str(pud_driver.execute_java_script(self.scripts.test_your_smarts_correct_id()))
                 pud_driver.click_element((By.ID, answer_id))
-                pud_driver.sleep_range(5,7)
+                pud_driver.sleep_range(8,10)
                 if pud_driver.get_attribute((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"), 'value') == 'Get your score' :
-                    pud_driver.sleep_range(1,2)
+                    pud_driver.sleep_range(3,5)
                     pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"))
                     break
                 else :
                     pud_driver.click_element((By.XPATH, "//span[@class='cbtn']/input[@type='submit']"))
-                    current_question += 1
 
             pud_driver.sleep_range(10,15)
             self.open_rewards_tab()
@@ -138,8 +132,7 @@ class Bifrost :
     def this_or_that(self) :
         pud_driver = self.pud_driver
         self.open_rewards_tab()
-        pud_driver.sleep_range(6, 8)
-        if bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["This or That?"]))) == True :
+        while bool(pud_driver.execute_java_script(self.scripts.click_not_checked_elements(["This or That?"]))) == True :
             pud_driver.sleep_range(15, 20)
             pud_driver.click_element((By.ID, "rqStartQuiz"))
             pud_driver.sleep_range(9,17)
@@ -147,6 +140,7 @@ class Bifrost :
                 answer = pud_driver.execute_java_script(self.scripts.this_or_that_id())
                 pud_driver.click_element((By.ID, answer), timeout=25)
                 pud_driver.sleep_range(9,17)
+            self.open_rewards_tab()
 
                     
                         
@@ -222,7 +216,7 @@ class bifrost_scripts :
        
             var titles = []
             for (let promo of promotions) {
-                if (promo['attributes']['type'] === 'urlreward' && promo['attributes']['max'] != '0' && promo['priority'] != 0) {
+                if (promo['attributes']['type'] === 'urlreward' && promo['attributes']['max'] != '0' && promo['priority'] > 0) {
                     titles.push(promo['attributes']['title']);
                 };
             };
@@ -263,4 +257,3 @@ class bifrost_scripts :
             return 0;
         }
         ''' + f'return clickElementByTextAndNotChecked({text_list});'
-
